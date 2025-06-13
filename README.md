@@ -40,7 +40,8 @@ description string < 2b * 150 = 300b
 owner_id uuid 8b
 photo_id string 100b
 place_id uuid 8b
-likes int 8b
+created_at date 8b
+...
 ```
 ```
 comments(250b):
@@ -52,7 +53,14 @@ owner_id uuid 8b
 reactions(20b):
 user_id uuid 8b
 post_id uuid 8b
-is_like 1b
+type 1b
+```
+```
+places(150b):
+id integer 8b
+name string 100b
+location point 8b
+post_count int 4b
 ```
 
 ## RPS
@@ -146,5 +154,31 @@ disks for iops = iops / disk_iops = RPS(write+read) / disk_iops = 2000 / 1000 = 
 
 ```
 Вывод: по расчетам количество более дешевых дисков (HDD) примерно в 10 раз больше, чем SSD дисков.
-Учитывая этот факт и планируемый рост нагрузки на чтение/запись, рост количества пользователей предлагаю использовать SSD диски.
+Учитывая этот факт и планируемый рост нагрузки на чтение/запись, рост количества пользователей, предлагаю использовать SSD диски.
 ```
+
+# Оценка хостов
+### Посты
+PostgreSQL
+RF = 2
+async replication, master-slave
+3 all_disks / 2 disks_per_host (типичная конфигурация) = 2 shards
+2 shards * 2 (RF) = 4 hosts by 2 disks
+
+Шардирование по key-based подход - by user_id
+
+### Комментарии
+PostgreSQL
+RF = 2
+async replication, master-slave
+4 all_disks / 2 disks_per_host = 2 shards
+2 shards * 2 (RF) = 4 hosts by 2 disks
+
+Шардирование по key-based подход - by posts_id
+
+### Реакции
+PostgreSQL
+RF = 2
+async replication, master-slave
+2 all_disks / 2 disks_per_host = 1 shards
+1 shards * 2 (RF) = 2 hosts by 2 disks
