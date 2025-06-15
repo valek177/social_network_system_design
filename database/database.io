@@ -2,7 +2,6 @@ Table users {
   id integer [primary key]
   first_name varchar
   last_name varchar
-  role varchar
   created_at timestamp
 }
 
@@ -11,8 +10,6 @@ Table posts {
   title varchar
   body text [note: 'Content of the post']
   user_id integer [not null]
-  status varchar
-  comments integer
   place_id integer
   created_at timestamp
 }
