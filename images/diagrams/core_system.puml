@@ -1,0 +1,90 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(client, "Client")
+
+Container(loadBalancer, "Load Balancer", "Distributes requests to BFF instances")
+
+Container(bffWeb, "BFF Browser", "Backend for Frontend for browser clients")
+Container(bffMobile, "BFF Mobile", "Backend for Frontend for mobile clients")
+
+Container(apiGateway, "API Gateway", "Routes requests to microservices")
+
+System_Boundary(mediaServ, "Media service") {
+    Container(S3, "S3", "")
+    Container(photoService, "Photo Service", "")
+    Rel(photoService, S3, "")
+}
+note bottom of S3
+  Replication factor 2
+  Master-Slave replication
+end note
+
+System_Boundary(postServ, "Post service") {
+    Container(postService, "Post Service", "")
+    ContainerDb(postDB, "DB", "PostgreSQL", "",  $tags="db")
+    Rel(postService, postDB, "")
+}
+note bottom of postDB
+  Replication factor 2
+  Master-Slave replication
+end note
+
+System_Boundary(relationServ, "Relation service") {
+    Container(relationService, "Relation Service", "")
+    ContainerDb(relationDB, "DB", "PostgreSQL", "",  $tags="db")
+    Rel(relationService, relationDB, "")
+}
+note bottom of relationDB
+  Replication factor 2
+  Master-Slave replication
+end note
+
+System_Boundary(reactionServ, "Reaction service") {
+    Container(reactionService, "Reaction Service", "")
+    ContainerDb(reactionDB, "DB", "PostgreSQL", "",  $tags="db")
+    Rel(reactionService, reactionDB, "")
+}
+note bottom of reactionDB
+  Replication factor 2
+  Master-Slave replication
+end note
+
+System_Boundary(timelineServ, "Timeline service") {
+    Container(timelineService, "Timeline Service", "")
+    ContainerDb(timelineDB, "DB", "PostgreSQL", "",  $tags="db")
+    ContainerDb(postCache, "Post cache", "Redis", "Stores latest some amount posts",  $tags="db")
+    Rel(timelineService, postCache, "")
+    Rel(postCache, timelineDB, "")
+}
+note bottom of postCache
+  Replication factor 2
+  Master-Slave replication
+end note
+
+note bottom of timelineDB
+  Replication factor 2
+  Master-Slave replication
+end note
+
+ContainerQueue(loadedPostsQueue, "Posts queue", "Kafka", "Message queue for loaded posts")
+Container(cdc, "CDC", "Scans a temporary bucket with photos, after the post is loaded, it moves them to the main bucket")
+
+Rel(client, loadBalancer, "Sends requests")
+Rel(loadBalancer, bffWeb, "Routes browser client requests")
+Rel(loadBalancer, bffMobile, "Routes mobile client requests")
+
+Rel(bffWeb, apiGateway, "Adapts and forwards requests")
+Rel(bffMobile, apiGateway, "Adapts and forwards requests")
+
+Rel(apiGateway, mediaServ, "Routes requests")
+Rel(apiGateway, timelineServ, "Routes requests")
+Rel(apiGateway, relationServ, "Routes requests")
+Rel(apiGateway, postServ, "Routes requests")
+Rel(apiGateway, reactionServ, "Routes requests")
+
+Rel(cdc, postServ, "Monitors loaded posts")
+Rel(cdc, mediaServ, "Moves photos or deletes unlinked URLs")
+Rel(postServ, loadedPostsQueue, "Publishes loaded posts")
+Rel(timelineServ, loadedPostsQueue, "Consumes loaded posts to rebuild timeline")
+@enduml
